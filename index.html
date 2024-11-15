@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Fee Collection System</title>
+    <style>
+        /* Basic Styling */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9fafb;
+            color: #333;
+            padding: 20px;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #4CAF50;
+        }
+
+        /* Main page heading */
+        .main-heading {
+            font-size: 24px;
+            color: #4CAF50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-container, .search-container, .manage-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .form-container input, .form-container select, .form-container button, 
+        .search-container input, .manage-container input, .manage-container button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        .form-container button, .manage-container button {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .form-container button:hover, .manage-container button:hover {
+            background-color: #45a049;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .total-section {
+            text-align: right;
+            margin-top: 20px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        /* Printable report style */
+        .printable-report {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .printable-report table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .printable-report th, .printable-report td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .printable-report th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .printable-report .footer {
+            text-align: right;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        /* Ensure print layout has proper margins */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            .main-heading, .footer {
+                font-size: 20px;
+                text-align: center;
+            }
+            .printable-report {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-heading">
+    SVM MODEL HIGHER SECONDARY SCHOOL
+</div>
+
+<h1>Class Fee Collection System</h1>
+
+<div class="manage-container">
+    <h2>Manage Classes</h2>
+    <input type="text" id="newClass" placeholder="Class Name">
+    <input type="text" id="newTeacher" placeholder="Class Teacher's Name">
+    <button onclick="addClass()">Add Class</button>
+    <button onclick="clearAllData()">Clear All Data</button>
+    <button onclick="restoreData()">Restore Data</button>
+</div>
+
+<div class="form-container">
+    <h2>Enter Collection Details</h2>
+    <input type="date" id="collectionDate" required>
+    <select id="classSelector">
+        <option value="">Select Class</option>
+        <!-- Classes will be dynamically loaded here -->
+    </select>
+    <input type="number" id="amountCollected" placeholder="Amount Collected (₹)" min="0" required>
+    <button onclick="addCollection()">Add Collection</button>
+</div>
+
+<div class="search-container">
+    <h2>Search and Print Records</h2>
+    <input type="date" id="searchDate" placeholder="Search by Date">
+    <select id="searchClass">
+        <option value="">Search by Class</option>
+        <!-- Classes will be dynamically loaded here -->
+    </select>
+    <button onclick="generateReport()">Print Report</button>
+</div>
+
+<h2>Collection Records</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Class</th>
+            <th>Teacher</th>
+            <th>Amount Collected (₹)</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="collectionTableBody"></tbody>
+</table>
+
+<div class="total-section" id="totalCollection">Total Collection: ₹0</div>
+
+<script>
+    // Initialize backup data
+    let backupData = {
+        classes: [],
+        collections: []
+    };
+
+    function setDefaultDate() {
+        const today = new Date();
+        const dateInput = document.getElementById("collectionDate");
+        dateInput.value = today.toISOString().split('T')[0];
+    }
+
+    function loadCollections() {
+        const collections = JSON.parse(localStorage.getItem("collections")) || [];
+        const classes = JSON.parse(localStorage.getItem("classes")) || [];
+        const tableBody = document.getElementById("collectionTableBody");
+        tableBody.innerHTML = "";
+        let totalAmount = 0;
+
+        collections.forEach((collection, index) => {
+            const classData = classes.find(c => c.className === collection.class);
+            const teacherName = classData ? classData.teacherName : "Unknown";
+
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${collection.date}</td>
+                <td>${collection.class}</td>
+                <td>${teacherName}</td>
+                <td>₹${collection.amount}</td>
+                <td><button onclick="deleteCollection(${index})">Delete</button></td>
+            `;
+            tableBody.appendChild(row);
+            totalAmount += parseFloat(collection.amount);
+        });
+
+        document.getElementById("totalCollection").textContent = `Total Collection: ₹${totalAmount.toFixed(2)}`;
+    }
+
+    function addCollection() {
+        const date = document.getElementById("collectionDate").value;
+        const classSelected = document.getElementById("classSelector").value;
+        const amount = parseFloat(document.getElementById("amountCollected").value);
+
+        if (date && classSelected && amount) {
+            const collections = JSON.parse(localStorage.getItem("collections")) || [];
+            collections.push({ date: date, class: classSelected, amount: amount.toFixed(2) });
+            localStorage.setItem("collections", JSON.stringify(collections));
+            loadCollections();
+            document.getElementById("collectionDate").value = "";
+            document.getElementById("classSelector").value = "";
+            document.getElementById("amountCollected").value = "";
+            setDefaultDate();
+        } else {
+            alert("Please fill in all fields.");
+        }
+    }
+
+    function deleteCollection(index) {
+        const collections = JSON.parse(localStorage.getItem("collections"));
+        collections.splice(index, 1);
+        localStorage.setItem("collections", JSON.stringify(collections));
+        loadCollections();
+    }
+
+    function addClass() {
+        const className = document.getElementById("newClass").value;
+        const teacherName = document.getElementById("newTeacher").value;
+
+        if (className && teacherName) {
+            const classes = JSON.parse(localStorage.getItem("classes")) || [];
+            classes.push({ className, teacherName });
+            localStorage.setItem("classes", JSON.stringify(classes));
+            document.getElementById("newClass").value = "";
+            document.getElementById("newTeacher").value = "";
+            loadClasses();
+        } else {
+            alert("Please enter both class name and teacher name.");
+        }
+    }
+
+    function loadClasses() {
+        const classes = JSON.parse(localStorage.getItem("classes")) || [];
+        const classSelector = document.getElementById("classSelector");
+        const searchClassSelector = document.getElementById("searchClass");
+
+        classSelector.innerHTML = "<option value=''>Select Class</option>";
+        searchClassSelector.innerHTML = "<option value=''>Search by Class</option>";
+
+        classes.forEach(classData => {
+            const option = document.createElement("option");
+            option.value = classData.className;
+            option.textContent = classData.className;
+            classSelector.appendChild(option);
+
+            const searchOption = document.createElement("option");
+            searchOption.value = classData.className;
+            searchOption.textContent = classData.className;
+            searchClassSelector.appendChild(searchOption);
+        });
+    }
+
+    function saveBackupData() {
+        backupData.classes = JSON.parse(localStorage.getItem("classes")) || [];
+        backupData.collections = JSON.parse(localStorage.getItem("collections")) || [];
+    }
+
+    function clearAllData() {
+        saveBackupData();  // Save the current data before clearing
+        if (confirm("Are you sure you want to clear all data?")) {
+            localStorage.removeItem("classes");
+            localStorage.removeItem("collections");
+            loadClasses();
+            loadCollections();
+            alert("All data has been cleared.");
+        }
+    }
+
+    function restoreData() {
+        if (backupData.classes.length > 0 || backupData.collections.length > 0) {
+            localStorage.setItem("classes", JSON.stringify(backupData.classes));
+            localStorage.setItem("collections", JSON.stringify(backupData.collections));
+            loadClasses();
+            loadCollections();
+            alert("Data has been restored.");
+        } else {
+            alert("No backup data to restore.");
+        }
+    }
+
+    function generateReport() {
+    const classes = JSON.parse(localStorage.getItem("classes")) || [];
+    const collections = JSON.parse(localStorage.getItem("collections")) || [];
+    const searchDate = document.getElementById("searchDate").value;
+    const searchClass = document.getElementById("searchClass").value;
+
+    const filteredCollections = collections.filter(collection => {
+        return (!searchDate || collection.date === searchDate) && 
+               (!searchClass || collection.class === searchClass);
+    });
+
+    const reportWindow = window.open("", "_blank");
+    reportWindow.document.write("<html><head><title>Collection Report</title>");
+    reportWindow.document.write("<style> body { font-family: Arial, sans-serif; padding: 20px; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; } th { background-color: #f2f2f2; } </style>");
+    reportWindow.document.write("</head><body>");
+    reportWindow.document.write("<h1 style='text-align: center;'>SVM MODEL HIGHER SECONDARY SCHOOL</h1>");
+    reportWindow.document.write("<h2 style='text-align: center;'>Fee Collection Report</h2>");
+    reportWindow.document.write("<table><thead><tr><th>Date</th><th>Class</th><th>Teacher</th><th>Amount Collected (₹)</th></tr></thead><tbody>");
+
+    let totalAmount = 0;
+    filteredCollections.forEach(collection => {
+        const classData = classes.find(c => c.className === collection.class);
+        const teacherName = classData ? classData.teacherName : "Unknown";
+        reportWindow.document.write(`<tr><td>${collection.date}</td><td>${collection.class}</td><td>${teacherName}</td><td>₹${collection.amount}</td></tr>`);
+        totalAmount += parseFloat(collection.amount);
+    });
+
+    reportWindow.document.write("</tbody></table>");
+    reportWindow.document.write(`<p><strong>Total Collection: ₹${totalAmount.toFixed(2)}</strong></p>`);
+    reportWindow.document.write("</body></html>");
+    reportWindow.document.close();
+
+    // Ensure the content is fully loaded before printing
+    reportWindow.onload = function() {
+        reportWindow.print();
+        reportWindow.close();
+    };
+}
+
+    // Initialize the page
+    loadClasses();
+    loadCollections();
+    setDefaultDate();
+</script>
+
+</body>
+</html>
